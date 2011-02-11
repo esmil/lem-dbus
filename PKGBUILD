@@ -5,8 +5,9 @@ pkgver=0.1
 pkgrel=1
 pkgdesc="DBus library for the Lua Event Machine"
 arch=('i686' 'x86_64' 'armv5tel' 'armv7l')
-url="https://github.com/esmil/lem-streams"
+url="https://github.com/esmil/lem-dbus"
 license=('GPL')
+depends=('lem' 'dbus-core')
 source=()
 
 build() {
