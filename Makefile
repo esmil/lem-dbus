@@ -1,17 +1,18 @@
-CC      = gcc
-CFLAGS  ?= -O2 -pipe -Wall -Wextra -Wno-variadic-macros -Wno-strict-aliasing
-STRIP   = strip
-INSTALL = install
+CC         = gcc
+CFLAGS    ?= -O2 -pipe -Wall -Wextra -Wno-variadic-macros -Wno-strict-aliasing
+PKGCONFIG  = pkg-config
+STRIP      = strip
+INSTALL    = install
 
-LUA_VERSION = 5.1
-PREFIX      = /usr/local
-LIBDIR      = $(PREFIX)/lib/lua/$(LUA_VERSION)/lem
+CFLAGS    += $(shell $(PKGCONFIG) --cflags lem)
+LUA_PATH   = $(shell $(PKGCONFIG) --variable=path lem)
+LUA_CPATH  = $(shell $(PKGCONFIG) --variable=cpath lem)
 
 programs = dbus.so
 scripts  = dbus.lua
 
 ifdef NDEBUG
-DEFINES+=-DNDEBUG
+CFLAGS += -DNDEBUG
 endif
 
 .PHONY: all strip install clean
@@ -21,15 +22,15 @@ all: $(programs)
 
 %.o: %.c
 	@echo '  CC $@'
-	@$(CC) $(CFLAGS) -fPIC -nostartfiles $(DEFINES) -c $< -o $@
+	@$(CC) $(CFLAGS) -fPIC -nostartfiles -c $< -o $@
 
-dbus.so: override CFLAGS += $(shell pkg-config --cflags dbus-1)
+dbus.so: CFLAGS += $(shell pkg-config --cflags dbus-1)
 dbus.so: add.o push.o parse.o dbus.o
 	@echo '  LD $@'
-	@$(CC) $(shell pkg-config --libs dbus-1) -lexpat -shared $(LDFLAGS) $^ -o $@
+	@$(CC) -lexpat $(shell pkg-config --libs dbus-1) -shared $(LDFLAGS) $^ -o $@
 
 allinone:
-	$(CC) $(CFLAGS) -fPIC $(DEFINES) -DALLINONE -shared $(shell pkg-config --cflags --libs dbus-1) -lexpat $(LDFLAGS) dbus.c -o dbus.so
+	$(CC) $(CFLAGS) -fPIC -DALLINONE -shared $(shell pkg-config --cflags --libs dbus-1) -lexpat $(LDFLAGS) dbus.c -o dbus.so
 
 %-strip: %
 	@echo '  STRIP $<'
@@ -37,17 +38,21 @@ allinone:
 
 strip: $(programs:%=%-strip)
 
-libdir-install:
-	@echo "  INSTALL -d $(LIBDIR)"
-	@$(INSTALL) -d $(DESTDIR)$(LIBDIR)/dbus
+path-install:
+	@echo "  INSTALL -d $(LUA_PATH)/lem"
+	@$(INSTALL) -d $(DESTDIR)$(LUA_PATH)/lem
 
-dbus.so-install: dbus.so libdir-install
+%.lua-install: %.lua path-install
 	@echo "  INSTALL $<"
-	@$(INSTALL) $< $(DESTDIR)$(LIBDIR)/dbus/core.so
+	@$(INSTALL) -m644 $< $(DESTDIR)$(LUA_PATH)/lem/$<
 
-%.lua-install: %.lua libdir-install
+cpath-install:
+	@echo "  INSTALL -d $(LUA_CPATH)/lem/dbus"
+	@$(INSTALL) -d $(DESTDIR)$(LUA_CPATH)/lem/dbus
+
+dbus.so-install: dbus.so cpath-install
 	@echo "  INSTALL $<"
-	@$(INSTALL) $< $(DESTDIR)$(LIBDIR)/$<
+	@$(INSTALL) $< $(DESTDIR)$(LUA_CPATH)/lem/dbus/core.so
 
 install: $(programs:%=%-install) $(scripts:%=%-install)
 
