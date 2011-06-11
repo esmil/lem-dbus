@@ -3,10 +3,18 @@ CFLAGS    ?= -O2 -pipe -Wall -Wextra -Wno-variadic-macros -Wno-strict-aliasing
 PKGCONFIG  = pkg-config
 STRIP      = strip
 INSTALL    = install
+UNAME      = uname
 
+OS         = $(shell $(UNAME))
 CFLAGS    += $(shell $(PKGCONFIG) --cflags lem)
 LUA_PATH   = $(shell $(PKGCONFIG) --variable=path lem)
 LUA_CPATH  = $(shell $(PKGCONFIG) --variable=cpath lem)
+
+ifeq ($(OS),Darwin)
+SHARED       = -dynamiclib -Wl,-undefined,dynamic_lookup
+else
+SHARED       = -shared
+endif
 
 programs = dbus.so
 scripts  = dbus.lua
@@ -27,10 +35,10 @@ all: $(programs)
 dbus.so: CFLAGS += $(shell pkg-config --cflags dbus-1)
 dbus.so: add.o push.o parse.o dbus.o
 	@echo '  LD $@'
-	@$(CC) -lexpat $(shell pkg-config --libs dbus-1) -shared $(LDFLAGS) $^ -o $@
+	@$(CC) -lexpat $(shell pkg-config --libs dbus-1) $(SHARED) $(LDFLAGS) $^ -o $@
 
 allinone:
-	$(CC) $(CFLAGS) -fPIC -DALLINONE -shared $(shell pkg-config --cflags --libs dbus-1) -lexpat $(LDFLAGS) dbus.c -o dbus.so
+	$(CC) $(CFLAGS) -fPIC -DALLINONE $(SHARED) $(shell pkg-config --cflags --libs dbus-1) -lexpat $(LDFLAGS) dbus.c -o dbus.so
 
 %-strip: %
 	@echo '  STRIP $<'
