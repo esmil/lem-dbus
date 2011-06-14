@@ -11,9 +11,10 @@ LUA_PATH   = $(shell $(PKGCONFIG) --variable=path lem)
 LUA_CPATH  = $(shell $(PKGCONFIG) --variable=cpath lem)
 
 ifeq ($(OS),Darwin)
-SHARED       = -dynamiclib -Wl,-undefined,dynamic_lookup
+SHARED     = -dynamiclib -Wl,-undefined,dynamic_lookup
+STRIP_ARGS = -u -r
 else
-SHARED       = -shared
+SHARED     = -shared
 endif
 
 programs = dbus.so
@@ -42,7 +43,7 @@ allinone:
 
 %-strip: %
 	@echo '  STRIP $<'
-	@$(STRIP) $<
+	@$(STRIP) $(STRIP_ARGS) $<
 
 strip: $(programs:%=%-strip)
 
