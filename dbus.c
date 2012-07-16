@@ -42,6 +42,11 @@
 
 #endif
 
+#if !(LUA_VERSION_NUM >= 502)
+#define lua_getuservalue lua_getfenv
+#define lua_setuservalue lua_setfenv
+#endif
+
 #define LEM_DBUS_BUS_OBJECT   1
 #define LEM_DBUS_MESSAGE_META 2
 #define LEM_DBUS_SIGNAL_TABLE 3
@@ -271,7 +276,7 @@ bus_get_signal_table(lua_State *T)
 		return 2;
 	}
 
-	lua_getfenv(T, 1);
+	lua_getuservalue(T, 1);
 	lua_rawgeti(T, -1, 2);
 	return 1;
 }
@@ -291,7 +296,7 @@ bus_get_object_table(lua_State *T)
 		return 2;
 	}
 
-	lua_getfenv(T, 1);
+	lua_getuservalue(T, 1);
 	lua_rawgeti(T, -1, 3);
 	return 1;
 }
@@ -696,7 +701,7 @@ bus_close(lua_State *T)
 	dbus_connection_unref(obj->conn);
 	obj->conn = NULL;
 
-	lua_getfenv(T, 1);
+	lua_getuservalue(T, 1);
 
 	lua_pushnil(T);
 	lua_rawseti(T, -2, 1);
@@ -776,7 +781,7 @@ bus_open(lua_State *T)
 	lua_pushvalue(T, lua_upvalueindex(1));
 	lua_setmetatable(T, -2);
 
-	/* create fenv table */
+	/* create uservalue table */
 	lua_createtable(T, 2, 0);
 
 	/* create signal handler thread */
@@ -801,8 +806,8 @@ bus_open(lua_State *T)
 	lua_xmove(S, T, 1);
 	lua_rawseti(T, -2, 3);
 
-	/* set fenv table */
-	lua_setfenv(T, -2);
+	/* set uservalue table */
+	lua_setuservalue(T, -2);
 
 	/* set the message filter */
 	if (!dbus_connection_add_filter(conn, message_filter, S, NULL)) {
