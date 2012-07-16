@@ -817,14 +817,14 @@ bus_open(lua_State *T)
 	return 1;
 }
 
-#define set_dbus_string_constant(L, i, name) \
+#define set_dbus_string_constant(L, name) \
 	lua_pushliteral(L, #name); \
 	lua_pushliteral(L, DBUS_##name); \
-	lua_rawset(L, i)
-#define set_dbus_number_constant(L, i, name) \
+	lua_rawset(L, -3)
+#define set_dbus_number_constant(L, name) \
 	lua_pushliteral(L, #name); \
 	lua_pushnumber(L, (lua_Number)DBUS_##name); \
-	lua_rawset(L, i)
+	lua_rawset(L, -3)
 
 int
 luaopen_lem_dbus_core(lua_State *L)
@@ -846,90 +846,90 @@ luaopen_lem_dbus_core(lua_State *L)
 
 	/* create the Bus metatable */
 	lua_newtable(L);
-	lua_pushvalue(L, 3);
-	lua_setfield(L, 3, "__index");
+	lua_pushvalue(L, -1);
+	lua_setfield(L, -2, "__index");
 
 	/* push the Bus metatable as upvalue 1 of open() */
-	lua_pushvalue(L, 3);
+	lua_pushvalue(L, -1);
 
 	/* create metatable for message objects */
 	lua_createtable(L, 0, 2);
-	lua_pushvalue(L, 4);
-	lua_setfield(L, 4, "__index");
+	lua_pushvalue(L, -1);
+	lua_setfield(L, -2, "__index");
 	/* insert garbage collection function */
 	lua_pushcfunction(L, message_gc);
-	lua_setfield(L, 4, "__gc");
+	lua_setfield(L, -2, "__gc");
 
 	/* insert the open() function
 	 * upvalue 1: Bus metatable
 	 * upvalue 2: message metatable
 	 */
 	lua_pushcclosure(L, bus_open, 2);
-	lua_setfield(L, 2, "open");
+	lua_setfield(L, -3, "open");
 
 	/* insert Bus methods */
 	for (p = bus_funcs; p->name; p++) {
 		lua_pushcfunction(L, p->func);
-		lua_setfield(L, 3, p->name);
+		lua_setfield(L, -2, p->name);
 	}
 
 	/* insert the Bus metatable */
-	lua_setfield(L, 2, "Bus");
+	lua_setfield(L, -2, "Bus");
 
 	/* create the Proxy metatable */
 	lua_newtable(L);
-	lua_pushvalue(L, 3);
-	lua_setfield(L, 3, "__index");
+	lua_pushvalue(L, -1);
+	lua_setfield(L, -2, "__index");
 
 	/* create the Method metatable */
 	lua_newtable(L);
-	lua_pushvalue(L, 4);
-	lua_setfield(L, 4, "__index");
+	lua_pushvalue(L, -1);
+	lua_setfield(L, -2, "__index");
 
 	/* create the Signal metatable */
 	lua_newtable(L);
-	lua_pushvalue(L, 5);
-	lua_setfield(L, 5, "__index");
+	lua_pushvalue(L, -1);
+	lua_setfield(L, -2, "__index");
 
 	/* insert the parse function */
-	lua_pushvalue(L, 4); /* upvalue 1: Method */
-	lua_pushvalue(L, 5); /* upvalue 2: Signal */
+	lua_pushvalue(L, -2); /* upvalue 1: Method */
+	lua_pushvalue(L, -2); /* upvalue 2: Signal */
 	lua_pushcclosure(L, lem_dbus_proxy_parse, 2);
-	lua_setfield(L, 3, "parse");
+	lua_setfield(L, -4, "parse");
 
 	/* insert the Signal metatable */
-	lua_setfield(L, 2, "Signal");
+	lua_setfield(L, -4, "Signal");
 
 	/* insert the Method metatable */
-	lua_setfield(L, 2, "Method");
+	lua_setfield(L, -3, "Method");
 
 	/* insert the Proxy metatable */
-	lua_setfield(L, 2, "Proxy");
+	lua_setfield(L, -2, "Proxy");
 
 	/* insert constants */
-	set_dbus_string_constant(L, 2, SERVICE_DBUS);
-	set_dbus_string_constant(L, 2, PATH_DBUS);
-	set_dbus_string_constant(L, 2, INTERFACE_DBUS);
-	set_dbus_string_constant(L, 2, INTERFACE_INTROSPECTABLE);
-	set_dbus_string_constant(L, 2, INTERFACE_PROPERTIES);
-	set_dbus_string_constant(L, 2, INTERFACE_PEER);
-	set_dbus_string_constant(L, 2, INTERFACE_LOCAL);
+	set_dbus_string_constant(L, SERVICE_DBUS);
+	set_dbus_string_constant(L, PATH_DBUS);
+	set_dbus_string_constant(L, INTERFACE_DBUS);
+	set_dbus_string_constant(L, INTERFACE_INTROSPECTABLE);
+	set_dbus_string_constant(L, INTERFACE_PROPERTIES);
+	set_dbus_string_constant(L, INTERFACE_PEER);
+	set_dbus_string_constant(L, INTERFACE_LOCAL);
 
-	set_dbus_number_constant(L, 2, NAME_FLAG_ALLOW_REPLACEMENT);
-	set_dbus_number_constant(L, 2, NAME_FLAG_REPLACE_EXISTING);
-	set_dbus_number_constant(L, 2, NAME_FLAG_DO_NOT_QUEUE);
+	set_dbus_number_constant(L, NAME_FLAG_ALLOW_REPLACEMENT);
+	set_dbus_number_constant(L, NAME_FLAG_REPLACE_EXISTING);
+	set_dbus_number_constant(L, NAME_FLAG_DO_NOT_QUEUE);
 
-	set_dbus_number_constant(L, 2, REQUEST_NAME_REPLY_PRIMARY_OWNER);
-	set_dbus_number_constant(L, 2, REQUEST_NAME_REPLY_IN_QUEUE);
-	set_dbus_number_constant(L, 2, REQUEST_NAME_REPLY_EXISTS);
-	set_dbus_number_constant(L, 2, REQUEST_NAME_REPLY_ALREADY_OWNER);
+	set_dbus_number_constant(L, REQUEST_NAME_REPLY_PRIMARY_OWNER);
+	set_dbus_number_constant(L, REQUEST_NAME_REPLY_IN_QUEUE);
+	set_dbus_number_constant(L, REQUEST_NAME_REPLY_EXISTS);
+	set_dbus_number_constant(L, REQUEST_NAME_REPLY_ALREADY_OWNER);
 
-	set_dbus_number_constant(L, 2, RELEASE_NAME_REPLY_RELEASED);
-	set_dbus_number_constant(L, 2, RELEASE_NAME_REPLY_NON_EXISTENT);
-	set_dbus_number_constant(L, 2, RELEASE_NAME_REPLY_NOT_OWNER);
+	set_dbus_number_constant(L, RELEASE_NAME_REPLY_RELEASED);
+	set_dbus_number_constant(L, RELEASE_NAME_REPLY_NON_EXISTENT);
+	set_dbus_number_constant(L, RELEASE_NAME_REPLY_NOT_OWNER);
 
-	set_dbus_number_constant(L, 2, START_REPLY_SUCCESS);
-	set_dbus_number_constant(L, 2, START_REPLY_ALREADY_RUNNING);
+	set_dbus_number_constant(L, START_REPLY_SUCCESS);
+	set_dbus_number_constant(L, START_REPLY_ALREADY_RUNNING);
 
 	return 1;
 }
