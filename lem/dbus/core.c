@@ -25,7 +25,7 @@
 #include <lem.h>
 #include <dbus/dbus.h>
 
-#ifdef ALLINONE
+#ifdef AMALG
 #include <expat.h>
 
 #define EXPORT static
@@ -145,7 +145,7 @@ watch_add(DBusWatch *watch, void *data)
 	dbus_watch_set_data(watch, w, NULL);
 
 	if (dbus_watch_get_enabled(watch))
-		ev_io_start(EV_G_ &w->ev);
+		ev_io_start(LEM_ &w->ev);
 
 	return TRUE;
 }
@@ -164,7 +164,7 @@ watch_remove(DBusWatch *watch, void *data)
 		  dbus_watch_get_enabled(watch) ? "true" : "false");
 
 	w = dbus_watch_get_data(watch);
-	ev_io_stop(EV_G_ &w->ev);
+	ev_io_stop(LEM_ &w->ev);
 	free(w);
 }
 
@@ -184,13 +184,13 @@ watch_toggle(DBusWatch *watch, void *data)
 	w = dbus_watch_get_data(watch);
 	if (dbus_watch_get_enabled(watch)) {
 		if (ev_is_active(&w->ev))
-			ev_io_stop(EV_G_ &w->ev);
+			ev_io_stop(LEM_ &w->ev);
 
-		ev_io_set(EV_G_ &w->ev, w->ev.fd,
+		ev_io_set(LEM_ &w->ev, w->ev.fd,
 		          flags_to_revents(dbus_watch_get_flags(watch)));
-		ev_io_start(EV_G_ &w->ev);
+		ev_io_start(LEM_ &w->ev);
 	} else
-		ev_io_stop(EV_G_ &w->ev);
+		ev_io_stop(LEM_ &w->ev);
 }
 
 static dbus_bool_t
@@ -213,7 +213,7 @@ timeout_add(DBusTimeout *timeout, void *data)
 	dbus_timeout_set_data(timeout, t, NULL);
 
 	if (dbus_timeout_get_enabled(timeout))
-		ev_timer_start(EV_G_ &t->ev);
+		ev_timer_start(LEM_ &t->ev);
 
 	return TRUE;
 }
@@ -231,7 +231,7 @@ timeout_remove(DBusTimeout *timeout, void *data)
 	          dbus_timeout_get_enabled(timeout) ? "true" : "false");
 
 	t = dbus_timeout_get_data(timeout);
-	ev_timer_stop(EV_G_ &t->ev);
+	ev_timer_stop(LEM_ &t->ev);
 	free(t);
 }
 
@@ -253,12 +253,12 @@ timeout_toggle(DBusTimeout *timeout, void *data)
 			((ev_tstamp)dbus_timeout_get_interval(timeout))/1000.0;
 
 		if (ev_is_active(&t->ev))
-			ev_timer_stop(EV_G_ &t->ev);
+			ev_timer_stop(LEM_ &t->ev);
 
 		ev_timer_set(&t->ev, interval, interval);
-		ev_timer_start(EV_G_ &t->ev);
+		ev_timer_start(LEM_ &t->ev);
 	} else
-		ev_timer_stop(EV_G_ &t->ev);
+		ev_timer_stop(LEM_ &t->ev);
 }
 
 /*

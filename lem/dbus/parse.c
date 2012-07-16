@@ -16,7 +16,7 @@
  * along with lem-dbus. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef ALLINONE
+#ifndef AMALG
 #include <string.h>
 #include <lem.h>
 #include <expat.h>

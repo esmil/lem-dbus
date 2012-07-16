@@ -1,69 +1,70 @@
-CC         = gcc
-CFLAGS    ?= -O2 -pipe -Wall -Wextra -Wno-variadic-macros -Wno-strict-aliasing
-PKGCONFIG  = pkg-config
+CC         = gcc -std=gnu99
+CFLAGS    ?= -O2 -pipe -Wall -Wextra
+PKG_CONFIG = pkg-config
 STRIP      = strip
 INSTALL    = install
 UNAME      = uname
 
 OS         = $(shell $(UNAME))
-CFLAGS    += $(shell $(PKGCONFIG) --cflags lem)
-LUA_PATH   = $(shell $(PKGCONFIG) --variable=path lem)
-LUA_CPATH  = $(shell $(PKGCONFIG) --variable=cpath lem)
+CFLAGS    += $(shell $(PKG_CONFIG) --cflags lem)
+lmoddir    = $(shell $(PKG_CONFIG) --variable=INSTALL_LMOD lem)
+cmoddir    = $(shell $(PKG_CONFIG) --variable=INSTALL_CMOD lem)
 
 ifeq ($(OS),Darwin)
 SHARED     = -dynamiclib -Wl,-undefined,dynamic_lookup
-STRIP_ARGS = -u -r
+STRIP     += -x
 else
 SHARED     = -shared
 endif
 
-programs = dbus.so
-scripts  = dbus.lua
+llibs = lem/dbus.lua
+clibs = lem/dbus/core.so
 
-ifdef NDEBUG
-CFLAGS += -DNDEBUG
+ifdef V
+E=@\#
+Q=
+else
+E=@echo
+Q=@
 endif
 
-.PHONY: all strip install clean
-.PRECIOUS: %.o
+.PHONY: all debug amalg strip install clean
 
-all: $(programs)
+all: CFLAGS += -DNDEBUG
+all: $(clibs)
+
+debug: $(clibs)
 
 %.o: %.c
-	@echo '  CC $@'
-	@$(CC) $(CFLAGS) -fPIC -nostartfiles -c $< -o $@
+	$E '  CC    $@'
+	$Q$(CC) $(CFLAGS) -fPIC -nostartfiles -c $< -o $@
 
-dbus.so: CFLAGS += $(shell pkg-config --cflags dbus-1)
-dbus.so: add.o push.o parse.o dbus.o
-	@echo '  LD $@'
-	@$(CC) -lexpat $(shell pkg-config --libs dbus-1) $(SHARED) $(LDFLAGS) $^ -o $@
+lem/dbus/core.so: CFLAGS += $(shell $(PKG_CONFIG) --cflags dbus-1)
+lem/dbus/core.so: LIBS += -lexpat $(shell $(PKG_CONFIG) --libs dbus-1)
+lem/dbus/core.so: lem/dbus/add.o lem/dbus/push.o lem/dbus/parse.o lem/dbus/core.o
+	$E '  LD    $@'
+	$Q$(CC) $(SHARED) $^ -o $@ $(LDFLAGS) $(LIBS)
 
-allinone:
-	$(CC) $(CFLAGS) -fPIC -DALLINONE $(SHARED) $(shell pkg-config --cflags --libs dbus-1) -lexpat $(LDFLAGS) dbus.c -o dbus.so
+amalg: CFLAGS += -DNDEBUG -DAMALG $(shell $(PKG_CONFIG) --cflags dbus-1)
+amalg: LIBS += -lexpat $(shell $(PKG_CONFIG) --libs dbus-1)
+amalg: lem/dbus/core.c lem/dbus/add.c lem/dbus/push.c lem/dbus/parse.c
+	$E '  CCLD  $@'
+	$Q$(CC) $(CFLAGS) -fPIC -nostartfiles $(SHARED) $< -o lem/dbus/core.so $(LDFLAGS) $(LIBS)
 
 %-strip: %
-	@echo '  STRIP $<'
-	@$(STRIP) $(STRIP_ARGS) $<
+	$E '  STRIP $<'
+	$Q$(STRIP) $<
 
-strip: $(programs:%=%-strip)
+strip: $(clibs:%=%-strip)
 
-path-install:
-	@echo "  INSTALL -d $(LUA_PATH)/lem"
-	@$(INSTALL) -d $(DESTDIR)$(LUA_PATH)/lem
+$(DESTDIR)$(lmoddir)/% $(DESTDIR)$(cmoddir)/%: %
+	$E '  INSTALL $@'
+	$Q$(INSTALL) -d $(dir $@)
+	$Q$(INSTALL) -m 644 $< $@
 
-%.lua-install: %.lua path-install
-	@echo "  INSTALL $<"
-	@$(INSTALL) -m644 $< $(DESTDIR)$(LUA_PATH)/lem/$<
-
-cpath-install:
-	@echo "  INSTALL -d $(LUA_CPATH)/lem/dbus"
-	@$(INSTALL) -d $(DESTDIR)$(LUA_CPATH)/lem/dbus
-
-dbus.so-install: dbus.so cpath-install
-	@echo "  INSTALL $<"
-	@$(INSTALL) $< $(DESTDIR)$(LUA_CPATH)/lem/dbus/core.so
-
-install: $(programs:%=%-install) $(scripts:%=%-install)
+install: \
+	$(llibs:%=$(DESTDIR)$(lmoddir)/%) \
+	$(clibs:%=$(DESTDIR)$(cmoddir)/%)
 
 clean:
-	rm -f $(programs) *.o *.c~ *.h~
+	rm -f $(clibs) lem/dbus/*.o
