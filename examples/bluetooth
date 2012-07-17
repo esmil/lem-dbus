@@ -64,14 +64,14 @@ end
 local dbus = require 'lem.dbus'
 
 -- Get the system bus
-local bus = assert(dbus.system_bus())
+local bus = assert(dbus.system())
 
 -- Make a new proxy object for the / object connected at org.bluez
-local bluez = bus:new_proxy('org.bluez', '/')
+local bluez = bus:newproxy('org.bluez', '/')
 
 -- Add methods manually
-bluez:add_method('ListAdapters', 'org.bluez.Manager')
-bluez:add_method('DefaultAdapter', 'org.bluez.Manager')
+bluez:addmethod('org.bluez.Manager', 'ListAdapters')
+bluez:addmethod('org.bluez.Manager', 'DefaultAdapter')
 
 -- Get a list of the adapters and print it
 local adapters, msg = bluez:ListAdapters()
@@ -92,10 +92,10 @@ print('\nDefault: '..assert(bluez:DefaultAdapter()))
 -- Now go through the adapters, create proxies for each of them
 -- and dump lots of information
 for i, objpath in ipairs(adapters) do
-	-- This time we use the auto_proxy() method to
+	-- This time we use the autoproxy() method to
 	-- parse the introspection xml and create the
 	-- proxy for us
-	local a = assert(bus:auto_proxy('org.bluez', objpath))
+	local a = assert(bus:autoproxy('org.bluez', objpath))
 	adapters[i] = a
 
 	print('\n'..objpath..':')
@@ -109,8 +109,8 @@ for i, objpath in ipairs(adapters) do
 			print('\n   '..objpath..':')
 
 			-- This time we don't even create a proxy object,
-			-- but just use call_method() directly
-			local info = assert(bus:call_method(
+			-- but just use call() directly
+			local info = assert(bus:call(
 				'org.bluez',         -- target
 				objpath,             -- object path
 				'org.bluez.Device',  -- interface
@@ -159,17 +159,17 @@ for _, a in ipairs(adapters) do
 	local id = a.object:gsub('.*/(.*)', '%1')
 
 	--[[ You can register for signals like this
-	assert(bus:register_signal(a.object,
+	assert(bus:registersignal(a.object,
 		'org.bluez.Adapter',
 		'DeviceFound',
 		DeviceFoundFunc(id)))
 	--]]
-	--![[ ..but since auto_proxy() already found
+	--![[ ..but since autoproxy() already found
 	--    much of this information we can just do
-	assert(bus:register_auto_signal(a.DeviceFound, DeviceFoundFunc(id)))
+	assert(bus:registersignal(a.DeviceFound, DeviceFoundFunc(id)))
 	--]]
 
-	assert(bus:register_auto_signal(a.PropertyChanged, PropertyChangedFunc(id, a)))
+	assert(bus:registersignal(a.PropertyChanged, PropertyChangedFunc(id, a)))
 end
 
 -- Start discovery on all adapters

@@ -28,33 +28,33 @@ Last tested with Bluez 4.87
 local dbus = require 'lem.dbus'
 
 -- Get the system bus
-local bus = assert(dbus.system_bus())
+local bus = assert(dbus.system())
 
 -- Create the agent exported object
-local agent_path = '/test/agent'
-local agent = dbus.EObject(agent_path)
+local agentpath = '/test/agent'
+local agent = dbus.newobject(agentpath)
 agent.exit_on_release = true
 
-agent:add_method('org.bluez.Agent', 'Release', '', '',
+agent:addmethod('org.bluez.Agent', 'Release', '', '',
 function()
    if agent.exit_on_release then
       bus:close()
    end
 end)
 
-agent:add_method('org.bluez.Agent', 'Authorize', 'os', '',
+agent:addmethod('org.bluez.Agent', 'Authorize', 'os', '',
 function(device, uuid)
    print(('Authorize (%s, %s)'):format(device, uuid))
 end)
 
-agent:add_method('org.bluez.Agent', 'RequestPinCode', 'o', 's',
+agent:addmethod('org.bluez.Agent', 'RequestPinCode', 'o', 's',
 function(device)
    print(('RequestPinCode (%s)'):format(device))
    io.write 'Enter PIN Code: '
    return 's', io.read()
 end)
 
-agent:add_method('org.bluez.Agent', 'RequestPasskey', 'o', 'u',
+agent:addmethod('org.bluez.Agent', 'RequestPasskey', 'o', 'u',
 function(device)
    print(('RequestPasskey (%s)'):format(device))
    while true do
@@ -65,15 +65,15 @@ function(device)
    end
 end)
 
-agent:add_method('org.bluez.Agent', 'DisplayPasskey', 'ou', '',
+agent:addmethod('org.bluez.Agent', 'DisplayPasskey', 'ou', '',
 function(device, passkey)
    print(('DisplayPasskey (%s, %d)'):format(device, passkey))
 end)
 
 do
-   local Rejected = dbus.new_error('org.bluez.Error.Rejected')
+   local Rejected = dbus.newerror('org.bluez.Error.Rejected')
 
-   agent:add_method('org.bluez.Agent', 'RequestConfirmation', 'ou', '',
+   agent:addmethod('org.bluez.Agent', 'RequestConfirmation', 'ou', '',
    function(device, passkey)
       print(('RequestConfirmation (%s, %d)'):format(device, passkey))
       io.write 'Confirm passkey (yes/no): '
@@ -86,23 +86,23 @@ do
    end)
 end
 
-agent:add_method('org.bluez.Agent', 'ConfirmModeChange', 's', '',
+agent:addmethod('org.bluez.Agent', 'ConfirmModeChange', 's', '',
 function(mode)
    print(('ConfirmModeChange (%s)'):format(mode))
 end)
 
-agent:add_method('org.bluez.Agent', 'Cancel', '', '',
+agent:addmethod('org.bluez.Agent', 'Cancel', '', '',
 function()
    print 'Cancel'
 end)
 
 -- Register the agent object
-assert(bus:register_object(agent))
+assert(bus:registerobject(agent))
 
 -- Get the adapter proxy object
 local adapter
 do
-   local manager = assert(bus:auto_proxy('org.bluez', '/'))
+   local manager = assert(bus:autoproxy('org.bluez', '/'))
    local path
 
    if #arg >= 1 then
@@ -111,7 +111,7 @@ do
       path = assert(manager:DefaultAdapter())
    end
 
-   adapter = assert(bus:auto_proxy('org.bluez', path))
+   adapter = assert(bus:autoproxy('org.bluez', path))
 end
 
 -- If both the adapter and address is given at the command line
@@ -135,7 +135,7 @@ if #arg >= 2 then
 
    agent.exit_on_release = false
 
-   local device, err = adapter:CreatePairedDevice(arg[2], agent_path, 'DisplayYesNo')
+   local device, err = adapter:CreatePairedDevice(arg[2], agentpath, 'DisplayYesNo')
    if device then
       print(('New device %s'):format(device))
    else
@@ -144,7 +144,7 @@ if #arg >= 2 then
 
    bus:close()
 else
-   local _, err = adapter:RegisterAgent(agent_path, 'DisplayYesNo')
+   local _, err = adapter:RegisterAgent(agentpath, 'DisplayYesNo')
    if err then error(err) end
 
    print 'Agent registered'

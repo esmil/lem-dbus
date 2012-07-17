@@ -262,12 +262,12 @@ timeout_toggle(DBusTimeout *timeout, void *data)
 }
 
 /*
- * Bus:get_signal_table()
+ * Bus:signaltable()
  *
  * argument 1: bus object
  */
 static int
-bus_get_signal_table(lua_State *T)
+bus_signaltable(lua_State *T)
 {
 	luaL_checktype(T, 1, LUA_TUSERDATA);
 	if (bus_unbox(T, 1) == NULL) {
@@ -282,12 +282,12 @@ bus_get_signal_table(lua_State *T)
 }
 
 /*
- * Bus:get_object_table()
+ * Bus:objecttable()
  *
  * argument 1: bus object
  */
 static int
-bus_get_object_table(lua_State *T)
+bus_objecttable(lua_State *T)
 {
 	luaL_checktype(T, 1, LUA_TUSERDATA);
 	if (bus_unbox(T, 1) == NULL) {
@@ -312,7 +312,7 @@ bus_get_object_table(lua_State *T)
  * ...
  */
 static int
-bus_send_signal(lua_State *T)
+bus_signal(lua_State *T)
 {
 	DBusConnection *conn;
 	const char *path;
@@ -334,11 +334,7 @@ bus_send_signal(lua_State *T)
 		return 2;
 	}
 
-	if (interface && interface[0] == '\0')
-		interface = NULL;
-
-	lem_debug("%s, %s, %s", path, interface ? interface : "(no interface)", name);
-
+	lem_debug("%s, %s, %s", path, interface, name);
 	msg = dbus_message_new_signal(path, interface, name);
 	if (msg == NULL)
 		goto oom;
@@ -363,7 +359,7 @@ oom:
 }
 
 static void
-method_return_handler(DBusPendingCall *pending, void *data)
+bus_call_cb(DBusPendingCall *pending, void *data)
 {
 	lua_State *T = data;
 	DBusMessage *msg = dbus_pending_call_steal_reply(pending);
@@ -408,7 +404,7 @@ method_return_handler(DBusPendingCall *pending, void *data)
 }
 
 /*
- * Bus:call_method()
+ * Bus:call()
  *
  * argument 1: bus object
  * argument 2: destination
@@ -419,7 +415,7 @@ method_return_handler(DBusPendingCall *pending, void *data)
  * ...
  */
 static int
-bus_call_method(lua_State *T)
+bus_call(lua_State *T)
 {
 	DBusConnection *conn;
 	const char *destination;
@@ -437,19 +433,15 @@ bus_call_method(lua_State *T)
 	method      = luaL_checkstring(T, 5);
 	signature   = luaL_optstring(T, 6, NULL);
 
-	conn        = bus_unbox(T, 1);
+	conn = bus_unbox(T, 1);
 	if (conn == NULL) {
 		lua_pushnil(T);
 		lua_pushliteral(T, "closed");
 		return 2;
 	}
 
-	if (interface && interface[0] == '\0')
-		interface = NULL;
-
 	lem_debug("calling\n  %s\n  %s\n  %s\n  %s(%s)",
-	          destination, path,
-		  interface ? interface : "(no interface)", method,
+	          destination, path, interface, method,
 		  signature ? signature : "");
 
 	/* create a new method call and check for errors */
@@ -468,9 +460,7 @@ bus_call_method(lua_State *T)
 	if (!dbus_connection_send_with_reply(conn, msg, &pending, -1))
 		goto oom;
 
-	if (!dbus_pending_call_set_notify(pending,
-	                                  method_return_handler,
-	                                  T, NULL))
+	if (!dbus_pending_call_set_notify(pending, bus_call_cb, T, NULL))
 		goto oom;
 
 	dbus_message_unref(msg);
@@ -835,14 +825,13 @@ int
 luaopen_lem_dbus_core(lua_State *L)
 {
 	luaL_Reg bus_funcs[] = {
-		{ "__gc",                   bus_gc },
-		{ "get_signal_table",       bus_get_signal_table },
-		{ "get_object_table",       bus_get_object_table },
-		{ "call_method",            bus_call_method },
-		{ "send_signal",            bus_send_signal },
-		/* { "unregister_object_path", bus_unregister_object_path }, */
-		{ "close",                  bus_close },
-		{ NULL,                     NULL }
+		{ "__gc",        bus_gc },
+		{ "signaltable", bus_signaltable },
+		{ "objecttable", bus_objecttable },
+		{ "call",        bus_call },
+		{ "signal",      bus_signal },
+		{ "close",       bus_close },
+		{ NULL,          NULL }
 	};
 	luaL_Reg *p;
 

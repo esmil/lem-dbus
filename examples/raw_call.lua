@@ -22,12 +22,12 @@ print('Entered ' .. arg[0])
 local dbus  = require 'lem.dbus'
 
 print 'Opening session bus'
-local bus = assert(dbus.session_bus())
+local bus = assert(dbus.session())
 
 if arg[1] == 'quit' then
 	print("Calling method Quit()")
 
-	local _, err = bus:call_method(
+	local _, err = bus:call(
 		'org.lua.TestScript',
 		'/org/lua/LEM/TestObject',
 		'org.lua.LEM.TestInterface',
@@ -40,7 +40,7 @@ else
 
 	print("Calling method Test('" .. argument .. "')")
 
-	local res, err = bus:call_method(
+	local res, err = bus:call(
 		'org.lua.TestScript',
 		'/org/lua/LEM/TestObject',
 		'org.lua.LEM.TestInterface',

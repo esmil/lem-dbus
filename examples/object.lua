@@ -23,14 +23,14 @@ local dbus  = require 'lem.dbus'
 
 -- Initialise and get handle for the session bus
 print "Opening session bus"
-local bus, name = dbus.session_bus()
+local bus, name = dbus.session()
 if not bus then error(name) end
 print("Acquired unique name '" .. name .. "' on the session bus")
 
 
 -- Set the connection name
 print("Asking for 'org.lua.TestScript'")
-if assert(bus:request_name('org.lua.TestScript', dbus.NAME_FLAG_DO_NOT_QUEUE))
+if assert(bus:RequestName('org.lua.TestScript', dbus.NAME_FLAG_DO_NOT_QUEUE))
 		~= dbus.REQUEST_NAME_REPLY_PRIMARY_OWNER then
 	print "Couldn't get the name org.lua.TestScript."
 	print "Perhaps another instance is running?"
@@ -59,7 +59,7 @@ end
 -- dbus-send --session --type=signal /org/lua/LEM/TestObject \
 --   org.lua.LEM.TestInterface.TestSignal string:'quit'
 
-assert(bus:register_signal(
+assert(bus:registersignal(
 	'/org/lua/LEM/TestObject',
 	'org.lua.LEM.TestInterface',
 	'TestSignal',
@@ -73,11 +73,11 @@ assert(bus:register_signal(
 ))
 
 -- Create object to export
-local o = dbus.EObject('/org/lua/LEM/TestObject')
+local obj = dbus.newobject('/org/lua/LEM/TestObject')
 
 -- This method takes any value(s) and returns a
 -- string describing how you called it
-o:add_method('org.lua.LEM.TestInterface', 'Test', 'v', 's',
+obj:addmethod('org.lua.LEM.TestInterface', 'Test', 'v', 's',
 function(...)
 	local s = 'You called Test(' .. stringify{...} .. ')'
 
@@ -87,8 +87,8 @@ end)
 
 -- This method always errors with the message 'Hello World!'
 do
-	local e = dbus.new_error()
-	o:add_method('org.lua.LEM.TestInterface', 'Error', '', '(ss)',
+	local e = dbus.newerror()
+	obj:addmethod('org.lua.LEM.TestInterface', 'Error', '', '(ss)',
 	function()
 		print "Error() method called"
 		return e('Hello World!')
@@ -98,9 +98,9 @@ end
 -- This method shows that it is of course possible to call other
 -- DBus methods within method handlers
 do
-	local DBus = assert(bus:auto_proxy('org.freedesktop.DBus', '/org/freedesktop/DBus'))
+	local DBus = assert(bus:autoproxy('org.freedesktop.DBus', '/org/freedesktop/DBus'))
 
-	o:add_method('org.lua.LEM.TestInterface', 'ListNames', '', 'as',
+	obj:addmethod('org.lua.LEM.TestInterface', 'ListNames', '', 'as',
 	function()
 		print "ListNames() method called.."
 		local list = assert(DBus:ListNames())
@@ -111,23 +111,23 @@ end
 
 -- This method unregisters the exported object
 -- WARNING: you won't be able to call any methods on it afterwards
-o:add_method('org.lua.LEM.TestInterface', 'Unregister', '', 's',
+obj:addmethod('org.lua.LEM.TestInterface', 'Unregister', '', 's',
 function()
 	print "Unregistering object"
-	local ok, msg = bus:unregister_object(o)
+	local ok, msg = bus:unregisterobject(o)
 	if not ok then return 's', msg end
 
 	return 's', 'ok'
 end)
 
 -- This method quits the script
-o:add_method('org.lua.LEM.TestInterface', 'Quit', '', '',
+obj:addmethod('org.lua.LEM.TestInterface', 'Quit', '', '',
 function()
 	print "Quit() method called, bye o/"
 	utils.spawn(function() bus:close() end)
 end)
 
 -- Register our object with the bus
-assert(bus:register_object(o))
+assert(bus:registerobject(obj))
 
 -- vim: syntax=lua ts=2 sw=2 noet:

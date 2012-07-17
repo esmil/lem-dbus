@@ -22,10 +22,10 @@ print('Entered ' .. arg[0])
 local dbus = require 'lem.dbus'
 
 print 'Opening session bus'
-local bus = assert(dbus.session_bus())
+local bus = assert(dbus.session())
 
 print 'Sending signal..'
-assert(bus:send_signal(
+assert(bus:signal(
 	'/org/lua/LEM/TestObject',
 	'org.lua.LEM.TestInterface',
 	'TestSignal',
