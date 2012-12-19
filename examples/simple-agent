@@ -25,6 +25,7 @@ Last tested with Bluez 4.87
 --]]
 
 -- Import module
+local io   = require 'lem.io'
 local dbus = require 'lem.dbus'
 
 -- Get the system bus
@@ -51,7 +52,7 @@ agent:addmethod('org.bluez.Agent', 'RequestPinCode', 'o', 's',
 function(device)
    print(('RequestPinCode (%s)'):format(device))
    io.write 'Enter PIN Code: '
-   return 's', io.read()
+   return 's', io.read('*l')
 end)
 
 agent:addmethod('org.bluez.Agent', 'RequestPasskey', 'o', 'u',
@@ -59,7 +60,7 @@ function(device)
    print(('RequestPasskey (%s)'):format(device))
    while true do
       io.write 'Enter passkey: '
-      local passkey = tonumber(io.read())
+      local passkey = tonumber(io.read('*l'))
       if passkey and passkey >= 0 then return 'u', passkey end
       print 'A non-negative integer is needed..'
    end
@@ -77,7 +78,7 @@ do
    function(device, passkey)
       print(('RequestConfirmation (%s, %d)'):format(device, passkey))
       io.write 'Confirm passkey (yes/no): '
-      local confirm = io.read()
+      local confirm = io.read('*l')
       if confirm == 'yes' then
          return
       end
