@@ -261,6 +261,14 @@ timeout_toggle(DBusTimeout *timeout, void *data)
 		ev_timer_stop(LEM_ &t->ev);
 }
 
+static int
+bus_closed(lua_State *T)
+{
+	lua_pushnil(T);
+	lua_pushliteral(T, "closed");
+	return 2;
+}
+
 /*
  * Bus:signaltable()
  *
@@ -270,11 +278,8 @@ static int
 bus_signaltable(lua_State *T)
 {
 	luaL_checktype(T, 1, LUA_TUSERDATA);
-	if (bus_unbox(T, 1) == NULL) {
-		lua_pushnil(T);
-		lua_pushliteral(T, "closed");
-		return 2;
-	}
+	if (bus_unbox(T, 1) == NULL)
+		return bus_closed(T);
 
 	lua_getuservalue(T, 1);
 	lua_rawgeti(T, -1, 1);
@@ -290,11 +295,8 @@ static int
 bus_objecttable(lua_State *T)
 {
 	luaL_checktype(T, 1, LUA_TUSERDATA);
-	if (bus_unbox(T, 1) == NULL) {
-		lua_pushnil(T);
-		lua_pushliteral(T, "closed");
-		return 2;
-	}
+	if (bus_unbox(T, 1) == NULL)
+		return bus_closed(T);
 
 	lua_getuservalue(T, 1);
 	lua_rawgeti(T, -1, 2);
@@ -328,11 +330,8 @@ bus_signal(lua_State *T)
 	signature = luaL_optstring(T, 5, NULL);
 
 	conn = bus_unbox(T, 1);
-	if (conn == NULL) {
-		lua_pushnil(T);
-		lua_pushliteral(T, "closed");
-		return 2;
-	}
+	if (conn == NULL)
+		return bus_closed(T);
 
 	lem_debug("%s, %s, %s", path, interface, name);
 	msg = dbus_message_new_signal(path, interface, name);
@@ -436,11 +435,8 @@ bus_call(lua_State *T)
 	signature   = luaL_optstring(T, 6, NULL);
 
 	conn = bus_unbox(T, 1);
-	if (conn == NULL) {
-		lua_pushnil(T);
-		lua_pushliteral(T, "closed");
-		return 2;
-	}
+	if (conn == NULL)
+		return bus_closed(T);
 
 	lem_debug("calling\n  %s\n  %s\n  %s\n  %s(%s)",
 	          destination, path, interface, method,
@@ -661,11 +657,8 @@ bus_listen(lua_State *T)
 
 	luaL_checktype(T, 1, LUA_TUSERDATA);
 	conn = bus_unbox(T, 1);
-	if (conn == NULL) {
-		lua_pushnil(T);
-		lua_pushliteral(T, "closed");
-		return 2;
-	}
+	if (conn == NULL)
+		return bus_closed(T);
 
 	lua_settop(T, 1);
 	lua_getuservalue(T, 1);
@@ -713,11 +706,8 @@ bus_interrupt(lua_State *T)
 
 	luaL_checktype(T, 1, LUA_TUSERDATA);
 	conn = bus_unbox(T, 1);
-	if (conn == NULL) {
-		lua_pushnil(T);
-		lua_pushliteral(T, "closed");
-		return 2;
-	}
+	if (conn == NULL)
+		return bus_closed(T);
 
 	lua_settop(T, 1);
 	lua_getuservalue(T, 1);
@@ -775,11 +765,8 @@ bus_close(lua_State *T)
 
 	luaL_checktype(T, 1, LUA_TUSERDATA);
 	obj = lua_touserdata(T, 1);
-	if (obj->conn == NULL) {
-		lua_pushnil(T);
-		lua_pushliteral(T, "closed");
-		return 2;
-	}
+	if (obj->conn == NULL)
+		return bus_closed(T);
 
 	lem_debug("closing DBus connection");
 
