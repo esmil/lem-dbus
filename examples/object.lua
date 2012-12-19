@@ -121,16 +121,18 @@ function()
 end)
 
 -- This method quits the script
-obj:addmethod('org.lua.LEM.TestInterface', 'Quit', '', '',
+obj:addmethod('org.lua.LEM.TestInterface', 'Quit', '', 's',
 function()
 	print "Quit() method called, bye o/"
-	utils.spawn(function() bus:close() end)
+	bus:interrupt()
+	return 's', 'Bye!'
 end)
 
 -- Register our object
 assert(bus:registerobject(obj))
 
 -- Now listen for signals and method calls
-assert(bus:listen())
+local ok, err = bus:listen()
+if not ok and err ~= 'interrupted' then error(err) end
 
 -- vim: syntax=lua ts=2 sw=2 noet:

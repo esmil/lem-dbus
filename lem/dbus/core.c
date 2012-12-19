@@ -701,6 +701,49 @@ bus_listen(lua_State *T)
 }
 
 /*
+ * DBus.interrupt()
+ *
+ * argument 1: bus object
+ */
+static int
+bus_interrupt(lua_State *T)
+{
+	DBusConnection *conn;
+	lua_State *S;
+
+	luaL_checktype(T, 1, LUA_TUSERDATA);
+	conn = bus_unbox(T, 1);
+	if (conn == NULL) {
+		lua_pushnil(T);
+		lua_pushliteral(T, "closed");
+		return 2;
+	}
+
+	lua_settop(T, 1);
+	lua_getuservalue(T, 1);
+	lua_rawgeti(T, 2, 3);
+	if (!lua_isthread(T, -1)) {
+		lua_pushnil(T);
+		lua_pushliteral(T, "not busy");
+		return 2;
+	}
+	S = lua_tothread(T, -1);
+	lua_pop(T, 1);
+	lua_pushnil(T);
+	lua_rawseti(T, -2, 3);
+
+	lua_settop(S, 0);
+	lua_pushnil(S);
+	lua_pushliteral(S, "interrupted");
+	lem_queue(S, 2);
+
+	dbus_connection_remove_filter(conn, message_filter, S);
+
+	lua_pushboolean(T, 1);
+	return 1;
+}
+
+/*
  * DBus.__gc()
  *
  * argument 1: bus object
@@ -745,12 +788,18 @@ bus_close(lua_State *T)
 	obj->conn = NULL;
 
 	lua_getuservalue(T, 1);
+	lua_rawgeti(T, -1, 3);
+	if (lua_isthread(T, -1)) {
+		lua_State *S = lua_tothread(T, -1);
+
+		lua_settop(S, 0);
+		lua_pushnil(S);
+		lua_pushliteral(S, "interrupted");
+		lem_queue(S, 2);
+	}
 
 	lua_pushnil(T);
-	lua_rawseti(T, -2, 1);
-	lua_pushnil(T);
-	lua_rawseti(T, -2, 2);
-
+	lua_setuservalue(T, 1);
 	lua_pushboolean(T, 1);
 	return 1;
 }
@@ -857,6 +906,7 @@ luaopen_lem_dbus_core(lua_State *L)
 		{ "call",        bus_call },
 		{ "signal",      bus_signal },
 		{ "close",       bus_close },
+		{ "interrupt",   bus_interrupt },
 		{ NULL,          NULL }
 	};
 	luaL_Reg *p;
