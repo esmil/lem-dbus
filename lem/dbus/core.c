@@ -340,8 +340,10 @@ bus_signal(lua_State *T)
 		goto oom;
 
 	if (signature && signature[0] != '\0' &&
-	    lem_dbus_add_arguments(T, 6, signature, msg))
+	    lem_dbus_add_arguments(T, 6, signature, msg)) {
+		dbus_message_unref(msg);
 		return luaL_error(T, "%s", lua_tostring(T, -1));
+	}
 
 	if (!dbus_connection_send(conn, msg, NULL))
 		goto oom;
