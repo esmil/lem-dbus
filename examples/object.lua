@@ -35,7 +35,7 @@ if assert(bus:RequestName('org.lua.TestScript', dbus.NAME_FLAG_DO_NOT_QUEUE))
 	print "Couldn't get the name org.lua.TestScript."
 	print "Perhaps another instance is running?"
 	bus:close() -- not really needed, will be closed by the garbage collector
-	os.exit(1)
+	utils.exit(1)
 end
 print "Acquired"
 
@@ -114,7 +114,7 @@ end
 obj:addmethod('org.lua.LEM.TestInterface', 'Unregister', '', 's',
 function()
 	print "Unregistering object"
-	local ok, msg = bus:unregisterobject(o)
+	local ok, msg = bus:unregisterobject(obj)
 	if not ok then return 's', msg end
 
 	return 's', 'ok'
@@ -127,7 +127,10 @@ function()
 	utils.spawn(function() bus:close() end)
 end)
 
--- Register our object with the bus
+-- Register our object
 assert(bus:registerobject(obj))
+
+-- Now listen for signals and method calls
+assert(bus:listen())
 
 -- vim: syntax=lua ts=2 sw=2 noet:

@@ -277,7 +277,7 @@ bus_signaltable(lua_State *T)
 	}
 
 	lua_getuservalue(T, 1);
-	lua_rawgeti(T, -1, 2);
+	lua_rawgeti(T, -1, 1);
 	return 1;
 }
 
@@ -297,7 +297,7 @@ bus_objecttable(lua_State *T)
 	}
 
 	lua_getuservalue(T, 1);
-	lua_rawgeti(T, -1, 3);
+	lua_rawgeti(T, -1, 2);
 	return 1;
 }
 
@@ -650,6 +650,57 @@ message_filter(DBusConnection *conn, DBusMessage *msg, void *data)
 }
 
 /*
+ * DBus.listen()
+ *
+ * argument 1: bus object
+ */
+static int
+bus_listen(lua_State *T)
+{
+	DBusConnection *conn;
+
+	luaL_checktype(T, 1, LUA_TUSERDATA);
+	conn = bus_unbox(T, 1);
+	if (conn == NULL) {
+		lua_pushnil(T);
+		lua_pushliteral(T, "closed");
+		return 2;
+	}
+
+	lua_settop(T, 1);
+	lua_getuservalue(T, 1);
+	lua_rawgeti(T, 2, 3);
+	if (lua_isthread(T, -1)) {
+		lua_pushnil(T);
+		lua_pushliteral(T, "busy");
+		return 2;
+	}
+	lua_pop(T, 1);
+
+	/* set the message filter */
+	if (!dbus_connection_add_filter(conn, message_filter, T, NULL)) {
+		dbus_connection_close(conn);
+		dbus_connection_unref(conn);
+		lua_pushnil(T);
+		lua_pushliteral(T, "out of memory");
+		return 2;
+	}
+
+	lua_pushthread(T);
+	lua_rawseti(T, 2, 3);
+
+	/* push signal table */
+	lua_rawgeti(T, 2, 1);
+	/* push object table */
+	lua_rawgeti(T, 2, 2);
+	/* push message metatable */
+	lua_pushvalue(T, lua_upvalueindex(1));
+	lua_replace(T, LEM_DBUS_MESSAGE_META);
+
+	return lua_yield(T, LEM_DBUS_TOP);
+}
+
+/*
  * DBus.__gc()
  *
  * argument 1: bus object
@@ -716,7 +767,6 @@ bus_open(lua_State *T)
 	DBusError err;
 	DBusConnection *conn;
 	struct bus_object *obj;
-	lua_State *S;
 
 	uri = luaL_checkstring(T, 1);
 	lem_debug("opening %s", uri);
@@ -774,41 +824,15 @@ bus_open(lua_State *T)
 	lua_setmetatable(T, -2);
 
 	/* create uservalue table */
-	lua_createtable(T, 2, 0);
-
-	/* create signal handler thread */
-	S = lua_newthread(T);
-	lua_rawseti(T, -2, 1);
-
-	/* put a reference to bus object and
-	 * message metatable on thread */
-	lua_pushvalue(T, -2);
-	lua_pushvalue(T, lua_upvalueindex(2));
-	lua_xmove(T, S, 2);
-
+	lua_createtable(T, 3, 0);
 	/* create signal handler table */
-	lua_newtable(S);
-	lua_pushvalue(S, -1);
-	lua_xmove(S, T, 1);
-	lua_rawseti(T, -2, 2);
-
+	lua_newtable(T);
+	lua_rawseti(T, -2, 1);
 	/* create object path table */
-	lua_newtable(S);
-	lua_pushvalue(S, -1);
-	lua_xmove(S, T, 1);
-	lua_rawseti(T, -2, 3);
-
+	lua_newtable(T);
+	lua_rawseti(T, -2, 2);
 	/* set uservalue table */
 	lua_setuservalue(T, -2);
-
-	/* set the message filter */
-	if (!dbus_connection_add_filter(conn, message_filter, S, NULL)) {
-		dbus_connection_close(conn);
-		dbus_connection_unref(conn);
-		lua_pushnil(T);
-		lua_pushliteral(T, "out of memory");
-		return 2;
-	}
 
 	/* return the bus object */
 	return 1;
@@ -845,8 +869,16 @@ luaopen_lem_dbus_core(lua_State *L)
 	lua_pushvalue(L, -1);
 	lua_setfield(L, -2, "__index");
 
-	/* push the Bus metatable as upvalue 1 of open() */
-	lua_pushvalue(L, -1);
+	/* insert the open() function */
+	lua_pushvalue(L, -1); /* upvalue 1: Bus metatable */
+	lua_pushcclosure(L, bus_open, 1);
+	lua_setfield(L, -3, "open");
+
+	/* insert Bus methods */
+	for (p = bus_funcs; p->name; p++) {
+		lua_pushcfunction(L, p->func);
+		lua_setfield(L, -2, p->name);
+	}
 
 	/* create metatable for message objects */
 	lua_createtable(L, 0, 2);
@@ -856,18 +888,11 @@ luaopen_lem_dbus_core(lua_State *L)
 	lua_pushcfunction(L, message_gc);
 	lua_setfield(L, -2, "__gc");
 
-	/* insert the open() function
-	 * upvalue 1: Bus metatable
-	 * upvalue 2: message metatable
+	/* insert the Bus.listen() method
+	 * upvalue 1: message metatable
 	 */
-	lua_pushcclosure(L, bus_open, 2);
-	lua_setfield(L, -3, "open");
-
-	/* insert Bus methods */
-	for (p = bus_funcs; p->name; p++) {
-		lua_pushcfunction(L, p->func);
-		lua_setfield(L, -2, p->name);
-	}
+	lua_pushcclosure(L, bus_listen, 1);
+	lua_setfield(L, -2, "listen");
 
 	/* insert the Bus metatable */
 	lua_setfield(L, -2, "Bus");
