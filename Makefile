@@ -1,7 +1,7 @@
-CC         = gcc -std=gnu99
+CC         = $(CROSS_COMPILE)gcc -std=gnu99
 CFLAGS    ?= -O2 -pipe -Wall -Wextra
-PKG_CONFIG = pkg-config
-STRIP      = strip
+PKG_CONFIG = $(CROSS_COMPILE)pkg-config
+STRIP      = $(CROSS_COMPILE)strip
 INSTALL    = install
 UNAME      = uname
 

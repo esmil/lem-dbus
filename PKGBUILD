@@ -19,7 +19,7 @@ build() {
 package() {
   cd "$startdir"
 
-  make DESTDIR="$pkgdir/" PREFIX='/usr' install
+  make DESTDIR="$pkgdir" install
 }
 
 # vim:set ts=2 sw=2 et:
